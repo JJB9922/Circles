@@ -50,7 +50,27 @@ pub fn main() !void {
             rl.DrawCircleSector(c.center, c.outerRadius, 0, 360, 32, rl.Fade(rl.BLUE, 0.3));
         }
 
-        if (isDrawingCircle) rl.DrawLineV(drawCenter, mousePos, rl.BLACK);
+        if (isDrawingCircle) {
+            const deltaX = (mousePos.x - drawCenter.x);
+            const deltaY = (mousePos.y - drawCenter.y);
+
+            var stPointX = @as(i32, @intFromFloat(drawCenter.x));
+            var stPointY = @as(i32, @intFromFloat(drawCenter.y));
+
+            const iter = @as(usize, @intFromFloat(drawOuterRadius / 2));
+
+            for (0..iter) |_| {
+                const distanceToCenter = std.math.sqrt(std.math.pow(f32, @as(f32, @floatFromInt(stPointX)) - drawCenter.x, 2) +
+                    std.math.pow(f32, @as(f32, @floatFromInt(stPointY)) - drawCenter.y, 2));
+
+                if (distanceToCenter <= drawOuterRadius) {
+                    rl.DrawPixel(stPointX, stPointY, rl.WHITE);
+                }
+
+                stPointX += @as(i32, @intFromFloat(deltaX / 16));
+                stPointY += @as(i32, @intFromFloat(deltaY / 16));
+            }
+        }
 
         rl.EndDrawing();
     }
