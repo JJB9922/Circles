@@ -1,24 +1,59 @@
 const std = @import("std");
+const rl = @cImport({
+    @cInclude("raylib.h");
+});
 
 pub fn main() !void {
-    // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
+    const winWidth: i32 = 800;
+    const winHeight: i32 = 450;
+    const winTitle = "Circles";
+    rl.InitWindow(winWidth, winHeight, winTitle);
 
-    // stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
+    const circle = struct { center: rl.Vector2, outerRadius: f32, startAngle: f32, endAngle: f32, segments: f32 };
 
-    try stdout.print("Run `zig build test` to run the tests.\n", .{});
+    rl.SetTargetFPS(120);
 
-    try bw.flush(); // don't forget to flush!
-}
+    var isDrawingCircle: bool = false;
+    var drawCenter = rl.Vector2{ .x = 0.0, .y = 0.0 };
+    var drawOuterRadius: f32 = 0.0;
 
-test "simple test" {
-    var list = std.ArrayList(i32).init(std.testing.allocator);
-    defer list.deinit(); // try commenting this out and see if zig detects the memory leak!
-    try list.append(42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
+    const listAllocator = std.heap.page_allocator;
+    var circleList = std.ArrayList(circle).init(listAllocator);
+    defer circleList.deinit();
+
+    while (!rl.WindowShouldClose()) {
+        const mousePos: rl.Vector2 = rl.GetMousePosition();
+
+        rl.BeginDrawing();
+
+        rl.ClearBackground(rl.RAYWHITE);
+
+        if (rl.IsMouseButtonPressed(rl.MOUSE_BUTTON_LEFT) and !isDrawingCircle) {
+            drawCenter = rl.Vector2{ .x = mousePos.x, .y = mousePos.y };
+            isDrawingCircle = true;
+        }
+
+        if (isDrawingCircle) {
+            drawOuterRadius = std.math.sqrt(std.math.pow(f32, (mousePos.x - drawCenter.x), 2.0) + std.math.pow(f32, (mousePos.y - drawCenter.y), 2.0));
+
+            rl.DrawCircleSector(drawCenter, drawOuterRadius, 0, 360, 32, rl.Fade(rl.RED, 0.3));
+
+            if (drawOuterRadius > 1.0 and rl.IsMouseButtonPressed(rl.MOUSE_BUTTON_LEFT)) {
+                isDrawingCircle = false;
+                const newCircle = circle{ .center = drawCenter, .outerRadius = drawOuterRadius, .startAngle = 0.0, .endAngle = 360.0, .segments = 32.0 };
+
+                try circleList.append(newCircle);
+            }
+        }
+
+        for (circleList.items) |c| {
+            rl.DrawCircleSector(c.center, c.outerRadius, 0, 360, 32, rl.Fade(rl.BLUE, 0.3));
+        }
+
+        if (isDrawingCircle) rl.DrawLineV(drawCenter, mousePos, rl.BLACK);
+
+        rl.EndDrawing();
+    }
+
+    rl.CloseWindow();
 }
